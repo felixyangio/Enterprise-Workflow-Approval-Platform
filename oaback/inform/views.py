@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.db.models import Q
 
 from .models import Inform, InformRead
 from .serializers import InformSerializer, PublishInformSerializer
@@ -17,27 +18,47 @@ class InformView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        page = int(request.query_params.get('page', 1))
-        size = 10
-        queryset = Inform.objects.select_related('author').prefetch_related('departments', 'read_records').all()
+        page = max(int(request.query_params.get('page', 1)), 1)
+        size = min(max(int(request.query_params.get('size', 10)), 1), 100)
+        queryset = (
+            Inform.objects
+            .select_related('author')
+            .prefetch_related('departments', 'read_records')
+            .order_by('-is_top', '-create_time', '-id')
+        )
         if not request.user.is_superuser:
             # Show only: public notifications OR notifications targeted at user's department
             try:
                 user_dept = request.user.staff_profile.department
             except Exception:
                 user_dept = None
-            from django.db.models import Q
             if user_dept:
                 queryset = queryset.filter(
                     Q(departments__isnull=True) | Q(departments=user_dept)
                 ).distinct()
             else:
                 queryset = queryset.filter(departments__isnull=True)
+
+        keyword = request.query_params.get('keyword') or request.query_params.get('title')
+        if keyword:
+            queryset = queryset.filter(
+                Q(title__icontains=keyword)
+                | Q(content__icontains=keyword)
+                | Q(author__realname__icontains=keyword)
+                | Q(author__email__icontains=keyword)
+            ).distinct()
+
+        read_filter = request.query_params.get('read')
+        if read_filter in ('read', 'true', '1'):
+            queryset = queryset.filter(read_records__reader=request.user).distinct()
+        elif read_filter in ('unread', 'false', '0'):
+            queryset = queryset.exclude(read_records__reader=request.user)
+
         total = queryset.count()
         start = (page - 1) * size
         items = queryset[start:start + size]
         serializer = InformSerializer(items, many=True, context={'request': request})
-        return Response({'total': total, 'page': page, 'items': serializer.data})
+        return Response({'total': total, 'page': page, 'size': size, 'items': serializer.data})
 
     def post(self, request):
         serializer = PublishInformSerializer(data=request.data)

@@ -1,3 +1,7 @@
+import csv
+import json
+
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -93,3 +97,35 @@ class StaffDetailView(APIView):
             return Response({'detail': 'Staff not found'}, status=status.HTTP_404_NOT_FOUND)
         staff.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StaffDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response({'detail': 'Permission denied. Only superusers can export employees.'}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = Staff.objects.select_related('user', 'department').all().order_by('id')
+        raw_pks = request.query_params.get('pks')
+        if raw_pks:
+            try:
+                pks = json.loads(raw_pks)
+            except json.JSONDecodeError:
+                pks = [pk for pk in raw_pks.split(',') if pk]
+            queryset = queryset.filter(pk__in=pks)
+
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="employees.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Name', 'Email', 'Department', 'Status', 'Join Date'])
+        status_labels = dict(Staff.STATUS_CHOICES)
+        for staff in queryset:
+            writer.writerow([
+                staff.user.realname,
+                staff.user.email,
+                staff.department.name if staff.department else '',
+                status_labels.get(staff.status, staff.status),
+                staff.join_date.isoformat() if staff.join_date else '',
+            ])
+        return response

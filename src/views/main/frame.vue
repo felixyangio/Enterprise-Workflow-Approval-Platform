@@ -1,602 +1,416 @@
 <script setup name="frame">
-import { ref, computed, reactive, onMounted } from "vue"
-import {
-    Expand,
-    Fold
-} from '@element-plus/icons-vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { Expand, Fold } from "@element-plus/icons-vue";
 import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import authHttp from "@/api/authHttp";
 import { ElMessage } from "element-plus";
-import routes from "@/router/frame"
+import routes from "@/router/frame";
 
-const authStore = useAuthStore()
-const router = useRouter()
+const authStore = useAuthStore();
+const router = useRouter();
+const route = useRoute();
 
+const displayUser = reactive({
+  department: {},
+  realname: "",
+});
+const defaultActive = ref("home");
+const isCollapse = ref(false);
+const isMobile = ref(false);
+const dialogVisible = ref(false);
+const formLabelWidth = "120px";
+const resetPwdForm = reactive({
+  oldpwd: "",
+  pwd1: "",
+  pwd2: "",
+});
+const formTag = ref();
+const rules = reactive({
+  oldpwd: [
+    { required: true, message: "Please enter the old password.", trigger: "blur" },
+    { min: 6, max: 20, message: "Password length must be between 6 and 20 characters.", trigger: "blur" },
+  ],
+  pwd1: [
+    { required: true, message: "Please enter the new password.", trigger: "blur" },
+    { min: 6, max: 20, message: "Password length must be between 6 and 20 characters.", trigger: "blur" },
+  ],
+  pwd2: [
+    { required: true, message: "Please confirm the password.", trigger: "blur" },
+    { min: 6, max: 20, message: "Password length must be between 6 and 20 characters.", trigger: "blur" },
+  ],
+});
 
+const asideWidth = computed(() => (isCollapse.value ? "72px" : "260px"));
 
-let displayUser = reactive({
-    department: {},
-    realname: ""
-})
-let defaultActive = ref("home")
-let isCollapse = ref(false);
-let dialogVisible = ref(false)
-let formLabelWidth = "100px"
-let resetPwdForm = reactive({
-    oldpwd: '',
-    pwd1: '',
-    pwd2: ''
-})
-let formTag = ref()
-let rules = reactive({
-    oldpwd: [
-        { required: true, message: 'Please enter the old password.', trigger: 'blur' },
-        { min: 6, max: 20, message: 'Password length must be between 6 and 20 characters.！', trigger: 'blur' },
-    ],
-    pwd1: [
-        { required: true, message: 'Please enter the new password.', trigger: 'blur' },
-        { min: 6, max: 20, message: 'Password length must be between 6 and 20 characters.', trigger: 'blur' },
-    ],
-    pwd2: [
-        { required: true, message: 'Please confirm the password.', trigger: 'blur' },
-        { min: 6, max: 20, message: 'Password length must be between 6 and 20 characters.', trigger: 'blur' },
-    ]
-})
-let asideWidth = computed(() => {
-    if (isCollapse.value) {
-        return "64px"
-    } else {
-        return "250px"
-    }
-})
+const visibleRoutes = computed(() =>
+  routes[0].children.filter((item) => authStore.has_permission(item.meta.permissions, item.meta.opt)),
+);
+
+const breadcrumbs = computed(() =>
+  route.matched
+    .filter((item) => item.meta?.text)
+    .map((item) => ({ name: item.name, text: item.meta.text })),
+);
+
+const currentTitle = computed(() => breadcrumbs.value[breadcrumbs.value.length - 1]?.text || "Home");
+
+function syncActive() {
+  defaultActive.value = route.name || "home";
+}
+
+function onResize() {
+  isMobile.value = window.innerWidth <= 900;
+  isCollapse.value = isMobile.value;
+}
 
 onMounted(() => {
-    defaultActive.value = router.currentRoute.value.name
-    displayUser.department = authStore.user.department
-    displayUser.realname = authStore.user.realname
-})
+  syncActive();
+  displayUser.department = authStore.user.department || {};
+  displayUser.realname = authStore.user.realname || "";
+  onResize();
+  window.addEventListener("resize", onResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onResize);
+});
+
+watch(() => route.name, syncActive);
 
 const onCollapseAside = () => {
-    isCollapse.value = !isCollapse.value
-}
+  isCollapse.value = !isCollapse.value;
+};
 
 const onExit = () => {
-    authStore.clearUserToken();
-    router.push({ name: 'login' })
-}
+  authStore.clearUserToken();
+  router.push({ name: "login" });
+};
 
 const onControlResetPwdDialog = () => {
-    resetPwdForm.oldpwd = ""
-    resetPwdForm.pwd1 = ""
-    resetPwdForm.pwd2 = ""
-    dialogVisible.value = true;
-}
+  resetPwdForm.oldpwd = "";
+  resetPwdForm.pwd1 = "";
+  resetPwdForm.pwd2 = "";
+  dialogVisible.value = true;
+};
 
 const onSubmit = () => {
-    formTag.value.validate(async (valid, fields) => {
-        if (valid) {
-            try {
-                await authHttp.resetPwd(resetPwdForm.oldpwd, resetPwdForm.pwd1, resetPwdForm.pwd2)
-                ElMessage.success("Password updated successfully.")
-                dialogVisible.value = false;
-            } catch (detail) {
-                ElMessage.error(detail)
-            }
-        } else {
-            ElMessage.info('Please fill in the required fields.')
-        }
-    })
-}
-
+  formTag.value.validate(async (valid) => {
+    if (!valid) {
+      ElMessage.info("Please fill in the required fields.");
+      return;
+    }
+    if (resetPwdForm.pwd1 !== resetPwdForm.pwd2) {
+      ElMessage.error("The new passwords do not match.");
+      return;
+    }
+    try {
+      await authHttp.resetPwd(resetPwdForm.oldpwd, resetPwdForm.pwd1, resetPwdForm.pwd2);
+      ElMessage.success("Password updated successfully.");
+      dialogVisible.value = false;
+    } catch (detail) {
+      ElMessage.error(detail);
+    }
+  });
+};
 </script>
 
 <template>
-    <el-container class="container">
-        <el-aside class="aside" :width="asideWidth">
-            <router-link to="/" class="brand"><strong>OA</strong><span v-show="!isCollapse">SYSTEM</span></router-link>
-            <el-menu :router="true" active-text-color="#ffd04b" background-color="#343a40" class="el-menu-vertical-demo"
-                :default-active="defaultActive" text-color="#fff" :collapse="isCollapse" :collapse-transition="false">
-                <template v-for="route in routes[0].children">
-                    <template v-if="authStore.has_permission(route.meta.permissions, route.meta.opt)">
-                        <el-menu-item v-if="!route.children" :index="route.name" :route="{ name: route.name }">
-                            <el-icon>
-                                <component :is="route.meta.icon"></component>
-                            </el-icon>
-                            <span>{{ route.meta.text }}</span>
-                        </el-menu-item>
+  <el-container class="layout-shell">
+    <el-aside class="aside" :width="asideWidth">
+      <router-link to="/" class="brand">
+        <span class="brand-mark">EW</span>
+        <span v-show="!isCollapse" class="brand-copy">
+          <strong>Workflow</strong>
+          <small>Operations Console</small>
+        </span>
+      </router-link>
 
-                        <el-sub-menu v-else :index="route.name">
-                            <template #title>
-                                <el-icon>
-                                    <component :is="route.meta.icon"></component>
-                                </el-icon>
-                                <span>{{ route.meta.text }}</span>
-                            </template>
-                            <template v-for="child in route.children">
-                                <template v-if="authStore.has_permission(child.meta.permissions, child.meta.opt)">
-                                    <el-menu-item v-if="!child.meta.hidden" :index="child.name"
-                                        :route="{ name: child.name }">
-                                        <el-icon>
-                                            <component :is="child.meta.icon"></component>
-                                        </el-icon>
-                                        <span>{{ child.meta.text }}</span>
-                                    </el-menu-item>
-                                </template>
-                            </template>
-                        </el-sub-menu>
-                    </template>
-                </template>
-            </el-menu>
-        </el-aside>
-        <el-container>
-            <el-header class="header">
-                <div class="left-header">
-                    <el-button v-show="isCollapse" :icon="Expand" @click="onCollapseAside" />
-                    <el-button v-show="!isCollapse" :icon="Fold" @click="onCollapseAside" />
-                </div>
-                <el-dropdown>
-                    <span class="el-dropdown-link">
-                        <el-avatar :size="30" icon="UserFilled" />
-                        <span style="margin-left: 10px;">[{{ displayUser.department?.name }}]{{
-                            displayUser.realname
-                            }}</span>
-                        <el-icon class="el-icon--right">
-                            <arrow-down />
-                        </el-icon>
-                    </span>
-                    <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item @click="onControlResetPwdDialog">Change Password</el-dropdown-item>
-                            <el-dropdown-item divided @click="onExit">Log Out</el-dropdown-item>
-                        </el-dropdown-menu>
-                    </template>
-                </el-dropdown>
-            </el-header>
-            <el-main class="main">
-                <RouterView></RouterView>
-            </el-main>
-        </el-container>
-    </el-container>
-    <el-dialog v-model="dialogVisible" title="Change Password" width="500">
-        <el-form :model="resetPwdForm" :rules="rules" ref="formTag">
-            <el-form-item label="Old Password" :label-width="formLabelWidth" prop="oldpwd">
-                <el-input v-model="resetPwdForm.oldpwd" autocomplete="off" type="password" />
-            </el-form-item>
+      <el-menu
+        :router="true"
+        class="nav-menu"
+        :default-active="defaultActive"
+        :collapse="isCollapse"
+        :collapse-transition="false"
+      >
+        <template v-for="menuRoute in visibleRoutes" :key="menuRoute.name">
+          <el-menu-item v-if="!menuRoute.children" :index="menuRoute.name" :route="{ name: menuRoute.name }">
+            <el-icon><component :is="menuRoute.meta.icon" /></el-icon>
+            <span>{{ menuRoute.meta.text }}</span>
+          </el-menu-item>
 
-            <el-form-item label="New Password" :label-width="formLabelWidth" prop="pwd1">
-                <el-input v-model="resetPwdForm.pwd1" autocomplete="off" type="password" />
-            </el-form-item>
-
-            <el-form-item label="Confirm Password" :label-width="formLabelWidth" prop="pwd2">
-                <el-input v-model="resetPwdForm.pwd2" autocomplete="off" type="password" />
-            </el-form-item>
-
-        </el-form>
-        <template #footer>
-            <div class="dialog-footer">
-                <el-button @click="dialogVisible = false">Cancel</el-button>
-                <el-button type="primary" @click="onSubmit">
-                    Confirm
-                </el-button>
-            </div>
+          <el-sub-menu v-else :index="menuRoute.name">
+            <template #title>
+              <el-icon><component :is="menuRoute.meta.icon" /></el-icon>
+              <span>{{ menuRoute.meta.text }}</span>
+            </template>
+            <template v-for="child in menuRoute.children" :key="child.name">
+              <el-menu-item
+                v-if="!child.meta.hidden && authStore.has_permission(child.meta.permissions, child.meta.opt)"
+                :index="child.name"
+                :route="{ name: child.name }"
+              >
+                <el-icon><component :is="child.meta.icon" /></el-icon>
+                <span>{{ child.meta.text }}</span>
+              </el-menu-item>
+            </template>
+          </el-sub-menu>
         </template>
-    </el-dialog>
+      </el-menu>
+    </el-aside>
+
+    <el-container class="content-shell">
+      <el-header class="header">
+        <div class="header-left">
+          <el-button class="icon-button" :icon="isCollapse ? Expand : Fold" @click="onCollapseAside" />
+          <div class="route-meta">
+            <strong>{{ currentTitle }}</strong>
+            <el-breadcrumb separator="/">
+              <el-breadcrumb-item v-for="item in breadcrumbs" :key="item.name">{{ item.text }}</el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
+        </div>
+
+        <el-dropdown>
+          <span class="user-chip">
+            <el-avatar :size="32" icon="UserFilled" />
+            <span class="user-copy">
+              <strong>{{ displayUser.realname }}</strong>
+              <small>{{ displayUser.department?.name || "No department" }}</small>
+            </span>
+            <el-icon><ArrowDown /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item @click="onControlResetPwdDialog">Change Password</el-dropdown-item>
+              <el-dropdown-item divided @click="onExit">Log Out</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </el-header>
+
+      <el-main class="main">
+        <RouterView />
+      </el-main>
+    </el-container>
+  </el-container>
+
+  <el-dialog v-model="dialogVisible" title="Change Password" width="520">
+    <el-form :model="resetPwdForm" :rules="rules" ref="formTag">
+      <el-form-item label="Old Password" :label-width="formLabelWidth" prop="oldpwd">
+        <el-input v-model="resetPwdForm.oldpwd" autocomplete="off" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="New Password" :label-width="formLabelWidth" prop="pwd1">
+        <el-input v-model="resetPwdForm.pwd1" autocomplete="off" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="Confirm" :label-width="formLabelWidth" prop="pwd2">
+        <el-input v-model="resetPwdForm.pwd2" autocomplete="off" type="password" show-password />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialogVisible = false">Cancel</el-button>
+        <el-button type="primary" @click="onSubmit">Confirm</el-button>
+      </div>
+    </template>
+  </el-dialog>
 </template>
 
-
-<!-- <style scoped>
-.container {
-  height: 100vh;
-  background-color: #f4f6f9;
-}
-
-.aside {
-  background-color: #343a40;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, .25), 0 10px 10px rgba(0, 0, 0, .22) !important;
-}
-
-.aside .brand {
-  color: #fff;
-  text-decoration: none;
-  border-bottom: 1px solid #434a50;
-  background-color: #232631;
-  height: 60px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 20px;
-}
-
-.header {
-  height: 60px;
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.el-dropdown-link {
-  display: flex;
-  align-items: center;
-}
-
-.el-menu {
-  border-right: none;
-}
-</style> -->
 <style scoped>
-/* ===============================
-Container
-=============================== */
-
-.container {
+.layout-shell {
   height: 100vh;
-  position: relative;
   overflow: hidden;
-
   background:
-    radial-gradient(circle at 15% 20%, rgba(120,150,255,.18), transparent 40%),
-    radial-gradient(circle at 85% 70%, rgba(180,200,255,.22), transparent 45%),
-    linear-gradient(180deg,#f8fafc,#eef2f7);
+    linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(20, 184, 166, 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, #edf4ff 0%, #f8fbff 45%, #eef2ff 100%);
+  background-size: 44px 44px, 44px 44px, auto;
 }
-
-
-/* ===============================
-Sidebar
-=============================== */
 
 .aside {
-
-  background: linear-gradient(
-    180deg,
-    #ffffff,
-    #f1f5f9
-  );
-
-  border-right: 1px solid rgba(0,0,0,.06);
-
-  box-shadow: 6px 0 20px rgba(0,0,0,.06);
-
+  position: relative;
+  z-index: 2;
+  background: rgba(9, 22, 45, 0.94);
+  border-right: 1px solid rgba(125, 211, 252, 0.18);
+  box-shadow: 18px 0 45px rgba(15, 23, 42, 0.24);
+  transition: width 0.2s ease;
 }
 
-
-/* ===============================
-Brand
-=============================== */
-
-.aside .brand {
-
-  height: 64px;
-
+.brand {
+  height: 72px;
   display: flex;
-
   align-items: center;
-
-  justify-content: center;
-
-  font-size: 20px;
-
-  font-weight: 600;
-
-  letter-spacing: 1px;
-
-  color: #111827;
-
-  border-bottom: 1px solid rgba(0,0,0,.05);
-
-  background: linear-gradient(
-    135deg,
-    #ffffff,
-    #f1f5f9
-  );
-
+  gap: 12px;
+  padding: 0 18px;
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.brand-sub {
-  margin-left: 6px;
-  color: #6b7280;
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #38bdf8, #2563eb 55%, #14b8a6);
+  font-weight: 900;
+  letter-spacing: 0;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.35);
 }
 
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 
-/* ===============================
-Menu
-=============================== */
+.brand-copy strong {
+  line-height: 1.1;
+}
+
+.brand-copy small {
+  margin-top: 4px;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 11px;
+}
+
+.nav-menu {
+  border-right: none;
+  background: transparent;
+  padding: 12px 10px;
+}
 
 :deep(.el-menu) {
-  background: transparent !important;
+  background: transparent;
   border-right: none;
 }
 
-
-/* menu item */
-
-:deep(.el-menu-item) {
-
-  height: 52px;
-
-  font-size: 14px;
-
-  font-weight: 500;
-
-  color: #374151 !important;
-
-  border-radius: 10px;
-
-  margin: 4px 10px;
-
-  transition: all .25s;
-
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  height: 46px;
+  margin: 5px 0;
+  border-radius: 8px;
+  color: rgba(226, 232, 240, 0.82);
 }
 
-
-/* hover */
-
-:deep(.el-menu-item:hover) {
-
-  background: #f5f8ff !important;
-
-  transform: translateX(3px);
-
-  color: #111827 !important;
-
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background: rgba(59, 130, 246, 0.14);
+  color: #ffffff;
 }
-
-
-/* active indicator */
 
 :deep(.el-menu-item.is-active) {
-
-  background: #eef3ff !important;
-
-  color: #2563eb !important;
-
-  font-weight: 600;
-
-  border-left: 4px solid #2563eb;
-
-  padding-left: 16px;
-
-  box-shadow: 0 0 6px rgba(37,99,235,.25);
-
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.92), rgba(20, 184, 166, 0.76));
+  color: white;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
 }
-
-
-/* submenu */
-
-:deep(.el-sub-menu__title) {
-
-  color: #374151 !important;
-
-  font-weight: 500;
-
-  border-radius: 10px;
-
-  margin: 4px 10px;
-
-  transition: .2s;
-
-}
-
-
-:deep(.el-sub-menu__title:hover) {
-
-  background: #f5f8ff !important;
-
-}
-
-
-/* submenu items */
 
 :deep(.el-sub-menu .el-menu-item) {
-
-  color: #4b5563 !important;
-
+  padding-left: 46px !important;
 }
 
-
-/* ===============================
-Header (Glass Effect)
-=============================== */
+.content-shell {
+  min-width: 0;
+}
 
 .header {
-
-  height: 64px;
-
-  background: rgba(255,255,255,.75);
-
-  backdrop-filter: blur(18px);
-
-  border-bottom: 1px solid rgba(0,0,0,.05);
-
+  height: 72px;
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
-
+  gap: 16px;
   padding: 0 24px;
-
-  box-shadow: 0 4px 16px rgba(0,0,0,.04);
-
+  background: rgba(255, 255, 255, 0.68);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.12);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
 }
 
-
-.left-header {
-
+.header-left {
   display: flex;
-
   align-items: center;
-
+  gap: 14px;
+  min-width: 0;
 }
 
-
-/* ===============================
-Search
-=============================== */
-
-.global-search {
-
-  margin-left: 20px;
-
-  width: 260px;
-
+.icon-button {
+  width: 36px;
+  height: 36px;
 }
 
-.global-search :deep(.el-input__wrapper) {
-
-  border-radius: 10px;
-
-  background: #f8fafc;
-
-  border: 1px solid rgba(0,0,0,.05);
-
+.route-meta {
+  min-width: 0;
 }
 
-
-/* ===============================
-Breadcrumb
-=============================== */
-
-.breadcrumb {
-
-  margin-bottom: 20px;
-
-  font-size: 14px;
-
-  color: #6b7280;
-
+.route-meta strong {
+  display: block;
+  color: #102033;
+  font-size: 16px;
 }
 
+.route-meta :deep(.el-breadcrumb) {
+  margin-top: 5px;
+  font-size: 12px;
+}
 
-/* ===============================
-Main Content
-=============================== */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 10px 7px 7px;
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.74);
+  cursor: pointer;
+}
+
+.user-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.user-copy strong {
+  color: #102033;
+  font-size: 13px;
+}
+
+.user-copy small {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 11px;
+}
 
 .main {
-
-  padding: 28px;
-
+  min-width: 0;
+  padding: 24px;
   overflow: auto;
-
 }
 
-
-/* card */
-
-.main :deep(.el-card),
-.main :deep(.el-table) {
-
-  background: white;
-
-  border-radius: 14px;
-
-  border: 1px solid rgba(0,0,0,.05);
-
-  box-shadow: 0 12px 30px rgba(0,0,0,.08);
-
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
+@media (max-width: 900px) {
+  .aside {
+    width: 72px !important;
+  }
 
-/* ===============================
-Table
-=============================== */
+  .header {
+    padding: 0 14px;
+  }
 
-:deep(.el-table th) {
+  .route-meta :deep(.el-breadcrumb),
+  .user-copy {
+    display: none;
+  }
 
-  color: #111827;
-
-  font-weight: 600;
-
-  background: #f8fafc;
-
-}
-
-:deep(.el-table td) {
-
-  color: #374151;
-
-}
-
-
-/* row hover */
-
-:deep(.el-table__row:hover) {
-
-  background: #f1f5ff !important;
-
-}
-
-
-/* ===============================
-Buttons
-=============================== */
-
-:deep(.el-button--primary) {
-
-  background: linear-gradient(
-    135deg,
-    #3b82f6,
-    #2563eb
-  );
-
-  border: none;
-
-  box-shadow: 0 6px 16px rgba(37,99,235,.3);
-
-  transition: .2s;
-
-}
-
-
-:deep(.el-button--primary:hover) {
-
-  transform: translateY(-2px);
-
-  box-shadow: 0 10px 22px rgba(37,99,235,.35);
-
-}
-
-
-/* ===============================
-Welcome Card
-=============================== */
-
-.welcome-card {
-
-  margin-bottom: 20px;
-
-  border-radius: 16px;
-
-  background: linear-gradient(
-    135deg,
-    #ffffff,
-    #f5f8ff
-  );
-
-  border: 1px solid rgba(0,0,0,.05);
-
-  box-shadow: 0 10px 28px rgba(0,0,0,.08);
-
-}
-
-
-.welcome-card h2 {
-
-  font-size: 20px;
-
-  color: #111827;
-
-  margin-bottom: 6px;
-
-}
-
-.welcome-card p {
-
-  color: #6b7280;
-
-  font-size: 14px;
-
+  .main {
+    padding: 16px;
+  }
 }
 </style>

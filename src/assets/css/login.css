@@ -29,21 +29,11 @@ Futuristic Background
   align-items: center;
 
   background:
-    radial-gradient(
-      circle at 30% 40%,
-      rgba(120, 160, 255, 0.25),
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 70% 60%,
-      rgba(150, 120, 255, 0.25),
-      transparent 40%
-    ),
-    linear-gradient(135deg, #0f172a, #1e3a8a, #312e81);
+    linear-gradient(90deg, rgba(125, 211, 252, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(45, 212, 191, 0.08) 1px, transparent 1px),
+    linear-gradient(135deg, #071426 0%, #0f2a4f 52%, #102a43 100%);
 
-  background-size: 200% 200%;
-
-  animation: bgMove 18s ease infinite;
+  background-size: 42px 42px, 42px 42px, auto;
 
   padding: 20px;
 }
@@ -55,11 +45,13 @@ Login Card
 .wrap-login100 {
   width: 460px;
 
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.90);
 
   backdrop-filter: blur(12px);
 
-  border-radius: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+
+  border-radius: 8px;
 
   padding: 60px 50px 50px;
 
@@ -93,7 +85,7 @@ Title
 /* 自动小组标签 */
 
 .login100-form-title::after {
-  content: "ITECH GROUP DX · University of Glasgow";
+  content: "ITECH GROUP DX / University of Glasgow";
 
   display: block;
 
@@ -129,7 +121,7 @@ Input
 
   height: 52px;
 
-  border-radius: 10px;
+  border-radius: 7px;
 
   border: 1px solid #d1d5db;
 
@@ -187,11 +179,11 @@ Button
 
   height: 52px;
 
-  border-radius: 10px;
+  border-radius: 7px;
 
   border: none;
 
-  background: linear-gradient(90deg, #4f6ef7, #7c8cff);
+  background: linear-gradient(90deg, #2563eb, #14b8a6);
 
   color: white;
 
@@ -210,6 +202,13 @@ Button
   transform: translateY(-2px);
 
   box-shadow: 0 12px 30px rgba(79, 110, 247, 0.45);
+}
+
+.login100-form-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+  box-shadow: none;
 }
 
 /* =========================
@@ -233,20 +232,6 @@ Animations
   100% {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes bgMove {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
   }
 }
 

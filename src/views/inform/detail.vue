@@ -1,14 +1,13 @@
 <script setup name="informdetail">
 import informHttp from "@/api/informHttp";
-import { ref, reactive, onMounted } from "vue"
+import { reactive, onMounted } from "vue"
 import { ElMessage } from "element-plus"
 import timeFormatter from "@/utils/timeFormatter";
 import OAMain from "@/components/OAMain.vue"
-import OAPagination from "@/components/OAPagination.vue"
-import OADialog from "@/components/OADialog.vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute()
+const router = useRouter()
 
 let inform = reactive({
     title: "",
@@ -27,38 +26,60 @@ onMounted(async () => {
     try{
         let data = await informHttp.getInformDetail(pk)
         Object.assign(inform, data)
-    }catch(detail){
+        await informHttp.readInform(pk)
+    } catch(detail) {
         ElMessage.error(detail)
     }
-
-    // Send read request
-
-    await informHttp.readInform(pk)
 })
 
 </script>
 
 <template>
-<OAMain title="Notification Details">
-    <el-card>
+<OAMain title="Notification Details" subtitle="Read the full announcement and attached rich content.">
+  <template #actions>
+    <el-button icon="Back" @click="router.push({ name: 'inform_list' })">Back to List</el-button>
+  </template>
+    <el-card class="oa-panel">
         <template #header>
-            <div style="text-align: center;">
-                <h2 style="padding-bottom: 20px;">{{ inform.title }}</h2>
-                <div>
-                    <span style="margin-right: 20px;">Author：{{ inform.author.realname }}</span>
-                    <span>Published Time：{{ timeFormatter.stringFromDateTime(inform.create_time) }}</span>
+            <div class="detail-heading">
+                <h2>{{ inform.title }}</h2>
+                <div class="oa-muted">
+                    <span>Author: {{ inform.author.realname }}</span>
+                    <span>Published: {{ timeFormatter.stringFromDateTime(inform.create_time) }}</span>
                 </div>
             </div>
         </template>
         <template #default>
             <div v-html="inform.content" class="content"></div>
         </template>
-        <template #footer>Views：{{ inform.read_count }}</template>
+        <template #footer>Views: {{ inform.read_count }}</template>
     </el-card>
 </OAMain>
 </template>
 
 <style scoped>
+.detail-heading {
+  text-align: center;
+}
+
+.detail-heading h2 {
+  margin: 0 0 14px;
+  font-size: 24px;
+  color: #102033;
+}
+
+.detail-heading div {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.content {
+  min-height: 240px;
+  line-height: 1.7;
+}
+
 .content :deep(img){
     max-width: 100%;
 }

@@ -5,9 +5,9 @@ const publishInform = (data) => {
   return http.post(path, data);
 };
 
-const getInformList = (page = 1) => {
-  const path = "/inform/inform?page=" + page;
-  return http.get(path);
+const getInformList = (page = 1, params = {}) => {
+  const path = "/inform/inform";
+  return http.get(path, { ...params, page });
 };
 
 const deleteInform = (pk) => {

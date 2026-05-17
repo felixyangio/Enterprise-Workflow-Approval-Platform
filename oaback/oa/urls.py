@@ -26,6 +26,7 @@ urlpatterns = [
     path('auth/', include('authapp.urls')),
     path('staff/', include('staff.urls')),
     path('absent/', include('absent.urls')),
+    path('workflow/', include('workflow.urls')),
     path('inform/', include('inform.urls')),
     path('home/', include('home.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

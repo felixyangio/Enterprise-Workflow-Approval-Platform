@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'authapp',
     'staff',
     'absent',
+    'workflow',
     'inform',
     'home',
 ]

@@ -33,7 +33,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   let user = computed(() => {
     // _user.value = {}
-    if (Object.keys(_user.value) == 0) {
+    if (Object.keys(_user.value).length == 0) {
       let user_str = localStorage.getItem(USER_KEY);
       if (user_str) {
         _user.value = JSON.parse(user_str);
@@ -70,7 +70,11 @@ export const useAuthStore = defineStore("auth", () => {
       }
 
       // Check whether the user is a leader
-      if (user.value.department?.leader_id == user.value.uid) {
+      if (
+        user.value.department?.leader_id != null
+        && user.value.uid != null
+        && user.value.department.leader_id === user.value.uid
+      ) {
         _permissions |= PermissionChoices.Leader;
       }
 

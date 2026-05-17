@@ -1,223 +1,101 @@
-# OA System — Project Startup Guide
+# Enterprise Workflow Approval Platform
 
-## Project Overview
+This project is a full-stack employee workflow approval platform built with Vue 3, Element Plus, Django, Django REST Framework, and JWT authentication.
 
-A full-stack enterprise OA (Office Automation) system with separated frontend and backend:
+It started as an OA-style employee system and now focuses on a more realistic enterprise scenario: employees submit workflow requests, administrators or assigned approvers process them, and every action is recorded in an approval timeline.
 
-| Layer | Tech Stack | Directory |
-|-------|-----------|-----------|
-| Frontend | Vue 3 + Vite + Element Plus + Pinia | `src/` |
-| Backend | Django 6 + Django REST Framework + JWT | `oaback/` |
-| Database | SQLite3 (development) | `oaback/db.sqlite3` |
+## Core Modules
 
----
+| Module | Description |
+|---|---|
+| Authentication | JWT login and password reset |
+| Employee Management | Departments, employees, and employee status |
+| Workflow Center | Leave, overtime, reimbursement, purchase, and remote-work requests |
+| Approval Todo | Pending approvals, approve/reject actions, and audit comments |
+| Announcements | Department-scoped company notifications with read tracking |
+| Dashboard | Approval todo count, personal request status, announcements, and staff charts |
 
-## Requirements
+## Tech Stack
 
-| Tool | Recommended Version |
-|------|-------------------|
-| Python | 3.10+ |
-| Node.js | 18+ |
-| npm | 9+ |
+| Layer | Stack |
+|---|---|
+| Frontend | Vue 3, Vite, Element Plus, Pinia, ECharts |
+| Backend | Django 6, Django REST Framework, Simple JWT |
+| Database | SQLite for development |
 
----
-
-## 1. Backend Setup
-
-### 1. Create and activate virtual environment
-
-```bash
-# From the project root directory
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-```
-
-### 2. Install dependencies
+## Backend Setup
 
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r oaback/requirements.txt
-```
-
-Key dependencies:
-
-```
-Django==6.0.3
-djangorestframework==3.16.1
-djangorestframework_simplejwt==5.5.1
-django-cors-headers==4.9.0
-pillow==12.1.1
-```
-
-### 3. Run database migrations
-
-```bash
 cd oaback
 python manage.py migrate
-```
-
-### 4. Create a superuser (first-time setup)
-
-```bash
-cd oaback
-python manage.py createsuperuser
-```
-
-> The superuser account is the **administrator** of the system. See the Permission System section below for full details.
-
-### 5. Start the backend development server
-
-```bash
-cd oaback
+python manage.py seed_workflow
 python manage.py runserver
 ```
 
-Backend runs at: `http://127.0.0.1:8000`
+Backend runs at `http://127.0.0.1:8000`.
 
-Admin panel: `http://127.0.0.1:8000/admin`
+Demo accounts created by `seed_workflow` when missing:
 
----
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `Admin@123456` |
+| Employee | `employee@example.com` | `Employee@123456` |
 
-## 2. Frontend Setup
-
-### 1. Install dependencies
+## Frontend Setup
 
 ```bash
-# From the project root directory (where src/ is located)
 npm install
-```
-
-### 2. Environment variable configuration
-
-Development config file: `.env.development`
-
-```env
-VITE_BASE_URL=http://127.0.0.1:8000
-VITE_APP_TITLE="OA System"
-```
-
-> If the backend port changes, update `VITE_BASE_URL` accordingly.
-
-### 3. Start the frontend development server
-
-```bash
 npm run dev
 ```
 
-Frontend runs at: `http://localhost:5173`
+Frontend runs at `http://localhost:5173`.
 
----
+Development environment variables:
 
-## 3. Initial Data Setup (First-time Use)
+```env
+VITE_BASE_URL=http://127.0.0.1:8000
+VITE_APP_TITLE="Enterprise Workflow Approval Platform"
+```
 
-Go to Django Admin at `http://127.0.0.1:8000/admin` and follow these steps:
+## Workflow API
 
-1. **Create departments**: STAFF → Department → Add
-   - Example: `Tech`, `Marketing`, `Board of Directors`
+| Method | Path | Description |
+|---|---|---|
+| GET | `/workflow/categories` | List active workflow request types |
+| GET | `/workflow/requests?scope=mine\|todo\|all` | List requests by visibility scope |
+| POST | `/workflow/requests` | Submit a workflow request |
+| GET | `/workflow/requests/<id>` | Request detail with approval logs |
+| PUT | `/workflow/requests/<id>/approve` | Approve a pending request |
+| PUT | `/workflow/requests/<id>/reject` | Reject a pending request |
+| PUT | `/workflow/requests/<id>/withdraw` | Withdraw own pending request |
+| GET | `/workflow/requests/<id>/logs` | Approval action timeline |
+| GET | `/workflow/summary` | Workflow dashboard metrics |
 
-2. **Add employees**: Log in to the frontend as a superuser and go to Employee Management → Add Employee, or create them manually via STAFF → Staff in the admin panel
+Legacy `/absent/*` APIs still exist for compatibility, but new screens use `/workflow/*`.
 
-3. **Assign departments**: STAFF → Staff → edit the employee and set their department
+## Workflow Rules
 
----
+- Employees can create workflow requests and view their own requests.
+- Employees can withdraw only their own `pending` requests.
+- Approvers and superusers can approve or reject `pending` requests.
+- Applicants cannot approve their own requests.
+- Every submit, approve, reject, and withdraw action creates a `WorkflowActionLog`.
+- Date-range request types require `start_date` and `end_date`.
+- Amount request types require a positive `amount`.
 
-## 4. Permission System
+## Tests
 
-The system has two permission levels:
+```bash
+cd test
+pytest
+```
 
-### Superuser (Administrator)
-Created via `python manage.py createsuperuser` or by checking **Superuser status** in Django Admin.
+The test suite covers authentication, announcements, legacy leave APIs, and the new workflow API.
 
-| Feature | Superuser |
-|---------|-----------|
-| Add Employee | ✅ |
-| Delete Employee | ✅ |
-| Update Employee Status | ✅ |
-| View all Leave Requests (Team Attendance) | ✅ |
-| Approve / Reject any Leave Request | ✅ |
-| Delete any Notification | ✅ |
-| Publish Notification to any department | ✅ |
-| View all Notifications | ✅ |
+## Notes
 
-### Regular Employee
-Standard accounts created through Add Employee.
-
-| Feature | Regular Employee |
-|---------|----------------|
-| View own Leave Requests | ✅ |
-| Submit Leave Request | ✅ |
-| Delete own Notifications | ✅ |
-| Publish Notification to own department or All | ✅ |
-| View Notifications (own dept + public only) | ✅ |
-| Team Attendance / Add Employee / Delete Employee | ❌ |
-
-> **Note:** After a superuser logs in, they must **log out and log back in** if their `is_superuser` flag was changed, since the frontend caches user info in `localStorage`.
-
----
-
-## 5. API Routes
-
-| Module | Prefix | Description |
-|--------|--------|-------------|
-| Auth | `/auth/` | Login, change password |
-| Staff | `/staff/` | Department management, employee CRUD |
-| Notification | `/inform/` | Publish, list, detail, read records, file/image upload |
-| Leave | `/absent/` | Leave application and approval |
-| Home | `/home/` | Dashboard statistics |
-| Media files | `/media/` | Uploaded images and attachments |
-
----
-
-## 6. Notification File Uploads
-
-The rich-text editor in **Publish Notification** supports:
-- **Images**: drag & drop or toolbar button, up to **25 MB**
-- **Other files** (PDF, Word, etc.): toolbar button or drag & drop, up to **25 MB**
-
-Uploaded files are stored under `oaback/media/`:
-- Images → `oaback/media/images/`
-- Other files → `oaback/media/attachments/`
-
----
-
-## 7. Employee Status
-
-| Value | Meaning | Frontend Display |
-|-------|---------|-----------------|
-| `1` | Active | Green |
-| `0` | Inactive | Yellow |
-| `3` | Locked | Red |
-
-Only superusers can update employee status. Status can also be changed via Django Admin.
-
----
-
-## 8. JWT Authentication
-
-- Request header format: `Authorization: JWT <token>`
-- Access Token lifetime: **1 day**
-- Refresh Token lifetime: **7 days**
-- Tokens are stored in the browser's `localStorage`
-
----
-
-## 9. Frequently Asked Questions
-
-**Q: Frontend requests return CORS errors?**
-Make sure the backend is running at `http://127.0.0.1:8000` and `VITE_BASE_URL` in `.env.development` matches.
-
-**Q: Page is blank or Employee List shows no data after login?**
-Check that the logged-in user has a Staff record in Django Admin with a department assigned.
-
-**Q: Notification List is empty after publishing?**
-Make sure all migrations have been applied (`python manage.py migrate`). The `inform_inform_departments` join table must exist.
-
-**Q: Department dropdown is empty?**
-Add at least one department in Django Admin under STAFF → Department.
-
-**Q: Superuser cannot see Team Attendance / Add Employee after login?**
-Log out and log back in so the frontend reloads the updated user info (including `is_superuser`) from the backend.
-
-**Q: File upload in Notification editor does nothing?**
-Ensure the backend server is running. Uploaded files are served from `/media/` — confirm `MEDIA_ROOT` is writable.
+- `oafront/` is a historical duplicate of the frontend. The root `src/` frontend is the active implementation.
+- Use `seed_workflow` after migrating a fresh database to create realistic demo data.

@@ -1,11 +1,13 @@
 from django.db.models import Count
+from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from absent.models import Absent
 from inform.models import Inform, InformRead
 from staff.models import Department
+from workflow.models import WorkflowRequest
+from workflow.serializers import WorkflowRequestSerializer
 
 
 class DepartmentStaffCountView(APIView):
@@ -24,7 +26,17 @@ class LatestInformView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        informs = Inform.objects.select_related('author').order_by('-create_time')[:10]
+        informs = Inform.objects.select_related('author').prefetch_related('departments').order_by('-create_time')
+        if not request.user.is_superuser:
+            try:
+                user_dept = request.user.staff_profile.department
+            except Exception:
+                user_dept = None
+            if user_dept:
+                informs = informs.filter(Q(departments__isnull=True) | Q(departments=user_dept)).distinct()
+            else:
+                informs = informs.filter(departments__isnull=True)
+        informs = informs[:10]
         result = []
         for inform in informs:
             reads = InformRead.objects.filter(inform=inform, reader=request.user)
@@ -44,26 +56,33 @@ class LatestAbsentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        absents = (
-            Absent.objects
-            .select_related('applicant__staff_profile__department')
-            .order_by('-create_time')[:10]
+        if request.user.is_superuser:
+            requests = WorkflowRequest.objects.all()
+        else:
+            requests = WorkflowRequest.objects.filter(applicant=request.user)
+        requests = (
+            requests
+            .select_related('category', 'applicant', 'approver')
+            .prefetch_related('logs__actor')
+            .order_by('-created_at')[:10]
         )
-        result = []
-        for absent in absents:
-            applicant = absent.applicant
-            try:
-                dept_name = applicant.staff_profile.department.name if applicant.staff_profile.department else ''
-            except Exception:
-                dept_name = ''
-            result.append({
-                'id': absent.id,
-                'requester': {
-                    'realname': applicant.realname,
-                    'department': {'name': dept_name},
-                },
-                'start_date': absent.start_date,
-                'end_date': absent.end_date,
-                'create_time': absent.create_time,
-            })
-        return Response(result)
+        return Response(WorkflowRequestSerializer(requests, many=True).data)
+
+
+class WorkflowSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        mine = WorkflowRequest.objects.filter(applicant=request.user)
+        if request.user.is_superuser:
+            todo = WorkflowRequest.objects.filter(status=WorkflowRequest.STATUS_PENDING)
+        else:
+            todo = WorkflowRequest.objects.filter(approver=request.user, status=WorkflowRequest.STATUS_PENDING)
+
+        return Response({
+            'todo': todo.count(),
+            'my_pending': mine.filter(status=WorkflowRequest.STATUS_PENDING).count(),
+            'my_approved': mine.filter(status=WorkflowRequest.STATUS_APPROVED).count(),
+            'my_rejected': mine.filter(status=WorkflowRequest.STATUS_REJECTED).count(),
+            'total_visible': WorkflowRequest.objects.count() if request.user.is_superuser else mine.count(),
+        })

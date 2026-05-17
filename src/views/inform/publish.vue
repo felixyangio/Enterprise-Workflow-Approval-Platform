@@ -8,15 +8,18 @@ import { ElMessage } from "element-plus"
 import { useAuthStore } from '@/stores/auth';
 import informHttp from '@/api/informHttp';
 import { i18nChangeLanguage } from '@wangeditor/editor'
+import { useRouter } from 'vue-router';
 
 i18nChangeLanguage('en')
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 let informForm = reactive({
   title: '',
   content: '',
-  department_ids: []
+  department_ids: [],
+  is_top: false
 })
 const rules = reactive({
   title: [{ required: true, message: "Please enter the title.", trigger: 'blur' }],
@@ -26,6 +29,7 @@ const rules = reactive({
 let formRef = ref()
 let formLabelWidth = "200px"
 let departments = ref([])
+let submitting = ref(false)
 
 ////////////// wangEditor //////////////
 const editorRef = shallowRef()
@@ -183,47 +187,65 @@ onMounted(async () => {
 const onSubmit = () => {
   formRef.value.validate(async (valid, fields) => {
     if (valid) {
+      submitting.value = true
       try {
-        let data = await informHttp.publishInform(informForm)
+        await informHttp.publishInform(informForm)
         ElMessage.success('Notification published successfully.')
         informForm.title = ''
         informForm.content = ''
         informForm.department_ids = []
+        informForm.is_top = false
         editorRef.value.setHtml('')
+        router.push({ name: 'inform_list' })
       } catch (detail) {
         ElMessage.error(detail)
+      } finally {
+        submitting.value = false
       }
     }
   })
 }
 
+const onDepartmentsChange = (value) => {
+  if (value.includes(0) && value.length > 1) {
+    informForm.department_ids = [0]
+  }
+}
+
 </script>
 
 <template>
-  <OAMain title="Publish Notification">
-    <el-card>
+  <OAMain title="Publish Notification" subtitle="Compose rich announcements and target the right audience.">
+    <template #actions>
+      <el-button icon="Back" @click="router.push({ name: 'inform_list' })">Back to List</el-button>
+    </template>
+    <el-card class="oa-panel publish-card">
       <el-form :model="informForm" :rules="rules" ref="formRef">
         <el-form-item label="Title" :label-width="formLabelWidth" prop="title">
-          <el-input v-model="informForm.title" autocomplete="off" />
+          <el-input v-model="informForm.title" autocomplete="off" placeholder="Notification title" />
         </el-form-item>
         <el-form-item label="Visible Departments" :label-width="formLabelWidth" prop="department_ids">
-          <el-select multiple v-model="informForm.department_ids">
+          <el-select multiple v-model="informForm.department_ids" style="width: 100%" @change="onDepartmentsChange">
             <el-option :value="0" label="All Departments"></el-option>
             <el-option v-for="department in departments" :label="department.name" :value="department.id"
               :key="department.name" />
           </el-select>
         </el-form-item>
+        <el-form-item label="Pinned" :label-width="formLabelWidth">
+          <el-switch v-model="informForm.is_top" active-text="Pin to top" />
+        </el-form-item>
         <el-form-item label="Content" :label-width="formLabelWidth" prop="content">
-          <div style="border: 1px solid #ccc; width: 100%;" @drop="onEditorDrop" @dragover.prevent>
-            <Toolbar style="border-bottom: 1px solid #ccc" :editor="editorRef" :defaultConfig="toolbarConfig"
+          <div class="editor-shell" @drop="onEditorDrop" @dragover.prevent>
+            <Toolbar class="editor-toolbar" :editor="editorRef" :defaultConfig="toolbarConfig"
               :mode="mode" />
-            <Editor style="height: 500px; overflow-y: hidden;" v-model="informForm.content"
+            <Editor class="editor-body" v-model="informForm.content"
               :defaultConfig="editorConfig" :mode="mode" @onCreated="handleCreated" />
           </div>
         </el-form-item>
         <el-form-item>
-          <div style="text-align: right; flex: 1;">
-            <el-button type="primary" @click="onSubmit">Publish</el-button>
+          <div class="submit-row">
+            <el-button @click="router.push({ name: 'inform_list' })">Cancel</el-button>
+            <el-button type="primary" :loading="submitting" icon="Promotion" @click="onSubmit">Publish</el-button>
           </div>
         </el-form-item>
       </el-form>
@@ -231,4 +253,32 @@ const onSubmit = () => {
   </OAMain>
 </template>
 
-<style scoped></style>
+<style scoped>
+.publish-card {
+  max-width: 1120px;
+}
+
+.editor-shell {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 8px;
+  background: white;
+}
+
+.editor-toolbar {
+  border-bottom: 1px solid rgba(37, 99, 235, 0.14);
+}
+
+.editor-body {
+  height: 480px;
+  overflow-y: hidden;
+}
+
+.submit-row {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+</style>

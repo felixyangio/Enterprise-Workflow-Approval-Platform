@@ -1,6 +1,7 @@
 import frame from "@/views/main/frame.vue";
 import myabsent from "@/views/absent/my.vue";
 import subabsent from "@/views/absent/sub.vue";
+import workflow_detail from "@/views/absent/detail.vue";
 import publish from "@/views/inform/publish.vue";
 import inform_detail from "@/views/inform/detail.vue";
 import inform_list from "@/views/inform/list.vue";
@@ -36,7 +37,7 @@ const routes = [
         component: absent,
         meta: {
           icon: "Checked",
-          text: "Attendance Management",
+          text: "Workflow Center",
           permissions: [PermissionChoices.Staff],
           opt: "|",
         },
@@ -47,7 +48,7 @@ const routes = [
             component: myabsent,
             meta: {
               icon: "UserFilled",
-              text: "My Attendance",
+              text: "My Requests",
               permissions: [PermissionChoices.Staff],
               opt: "|",
             },
@@ -58,10 +59,20 @@ const routes = [
             component: subabsent,
             meta: {
               icon: "User",
-              text: "Team Attendance",
+              text: "Approval Todo",
               permissions: [
                 PermissionChoices.Superuser,
               ],
+              opt: "|",
+            },
+          },
+          {
+            path: "detail/:id",
+            name: "workflow_detail",
+            component: workflow_detail,
+            meta: {
+              hidden: true,
+              permissions: [PermissionChoices.Staff],
               opt: "|",
             },
           },

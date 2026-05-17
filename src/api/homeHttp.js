@@ -11,7 +11,12 @@ const getLatestInforms = () => {
 }
 
 const getLatestAbsents = () => {
-    const path = "/home/latest/absent"
+    const path = "/home/latest/workflow"
+    return http.get(path)
+}
+
+const getWorkflowSummary = () => {
+    const path = "/home/workflow/summary"
     return http.get(path)
 }
 
@@ -19,5 +24,6 @@ const getLatestAbsents = () => {
 export default {
     getDepartmentStaffCount,
     getLatestInforms,
-    getLatestAbsents
+    getLatestAbsents,
+    getWorkflowSummary
 }

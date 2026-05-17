@@ -1,6 +1,4 @@
-<script setup name="myabsent"> 
-import {ref, defineModel, defineProps, defineEmits} from "vue" 
-
+<script setup name="OADialog">
 let dialogVisible = defineModel({required: true});
 let props = defineProps({
   title: {
@@ -9,7 +7,19 @@ let props = defineProps({
   },
   width: {
     type: String,
-    default: "500"
+    default: "560"
+  },
+  confirmText: {
+    type: String,
+    default: "Confirm"
+  },
+  cancelText: {
+    type: String,
+    default: "Cancel"
+  },
+  submitting: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -28,13 +38,13 @@ const onSubmit = () => {
 </script>
 
 <template>
-  <el-dialog  v-model="dialogVisible" :title="props.title" :width="props.width">
-  <slot></slot>
+  <el-dialog v-model="dialogVisible" :title="props.title" :width="props.width" class="oa-dialog">
+    <slot></slot>
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="onCancel">Cancel</el-button>
-        <el-button type="primary" @click="onSubmit">
-          Confirm
+        <el-button @click="onCancel">{{ props.cancelText }}</el-button>
+        <el-button type="primary" :loading="props.submitting" @click="onSubmit">
+          {{ props.confirmText }}
         </el-button>
       </div>
     </template>
@@ -43,6 +53,10 @@ const onSubmit = () => {
  
 </template>
 <style scoped>
-
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
 
 </style>

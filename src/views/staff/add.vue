@@ -19,8 +19,14 @@ let staffForm = reactive({
 });
 const formRef = ref()
 let rules = reactive({
-    email: [{required: true, message: "Please enter the email address.", trigger: 'blur'}],
-    password: [{required: true, message: "Please enter the password.", trigger: 'blur'}],
+    email: [
+        {required: true, message: "Please enter the email address.", trigger: 'blur'},
+        {type: "email", message: "Please enter a valid email address.", trigger: 'blur'}
+    ],
+    password: [
+        {required: true, message: "Please enter the password.", trigger: 'blur'},
+        {min: 6, max: 20, message: "Password length must be between 6 and 20 characters.", trigger: 'blur'}
+    ],
     realname: [{required: true, message: "Please enter the real name.", trigger: 'blur'}],
     department_id: [{required: true, message: "Please select a department.", trigger: 'change'}],
 })
@@ -55,8 +61,11 @@ const onSubmit = () => {
 </script>
 
 <template>
-    <OAMain title="Add Employee">
-        <el-card shadow="always">
+    <OAMain title="Add Employee" subtitle="Create a staff account and assign department access.">
+        <template #actions>
+            <el-button icon="Back" @click="router.push({name: 'staff_list'})">Back to List</el-button>
+        </template>
+        <el-card class="oa-panel staff-form-card" shadow="always">
             <el-form :rules="rules" :model="staffForm" ref="formRef" label-width="120px">
                 <el-form-item label="Name" prop="realname">
                     <el-input v-model="staffForm.realname" placeholder="Please enter the name">
@@ -95,11 +104,25 @@ const onSubmit = () => {
                 </el-form-item>
 
                 <el-form-item>
-                    <el-button type="primary" @click="onSubmit"> Submit </el-button>
+                    <div class="submit-row">
+                        <el-button @click="router.push({name: 'staff_list'})">Cancel</el-button>
+                        <el-button type="primary" icon="Check" @click="onSubmit">Submit</el-button>
+                    </div>
                 </el-form-item>
             </el-form>
         </el-card>
     </OAMain>
 </template>
 
-<style scoped></style>
+<style scoped>
+.staff-form-card {
+    max-width: 760px;
+}
+
+.submit-row {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+</style>

@@ -1,6 +1,6 @@
 <script setup name="login">
 import login_img from "@/assets/image/login.png"
-import {reactive} from "vue"
+import {reactive, ref} from "vue"
 import {useAuthStore} from "@/stores/auth"
 import {useRouter} from "vue-router"
 import authHttp from "@/api/authHttp"
@@ -13,22 +13,22 @@ const form = reactive({
   email: "",
   password: ""
 })
+const loading = ref(false)
 
 const onSubmit = async () => {
-    let pwdRgx = /^[0-9a-zA-Z_-]{6,20}/
-    let emailRgx = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(.[a-zA-Z0-9])+/
+    let emailRgx = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/
     if(!(emailRgx.test(form.email))){
         ElMessage.info('The email format is not satisfactory!')
         return;
     }
-    if(!(pwdRgx.test(form.password))){
-        ElMessage.info("The password format is not satisfactory!")
+    if(form.password.length < 6 || form.password.length > 20){
+        ElMessage.info("Password length must be between 6 and 20 characters.")
         return;
     }
     // asynchronous call
+    loading.value = true
     try{
         let data = await authHttp.login(form.email, form.password)
-        // console.log('data:', data);
         let token = data.token;
         let user = data.user;
         authStore.setUserToken(user, token);
@@ -36,6 +36,8 @@ const onSubmit = async () => {
         router.push({name: "frame"})
     }catch(detail){
         ElMessage.error(detail)
+    } finally {
+        loading.value = false
     }
   }
 
@@ -54,7 +56,7 @@ const onSubmit = async () => {
 
           <!-- email -->
           <div class="wrap-input100 validate-input">
-            <input class="input100" type="text" name="email" placeholder="Email" v-model="form.email"/>
+            <input class="input100" type="text" name="email" placeholder="Email" v-model="form.email" @keyup.enter="onSubmit"/>
             <span class="focus-input100"></span>
             <span class="symbol-input100">
               <i class="iconfont icon-fa-envelope" aria-hidden="true"></i>
@@ -63,7 +65,7 @@ const onSubmit = async () => {
           
           <!-- password -->
           <div class="wrap-input100">
-            <input class="input100" type="password" placeholder="Password"  v-model="form.password"/>
+            <input class="input100" type="password" placeholder="Password"  v-model="form.password" @keyup.enter="onSubmit"/>
             <span class="focus-input100"></span>
             <span class="symbol-input100">
               <i class="iconfont icon-fa-lock" aria-hidden="true"></i>
@@ -72,8 +74,8 @@ const onSubmit = async () => {
 
           <!-- button -->
           <div class="container-login100-form-btn" >
-            <button class="login100-form-btn" @click="onSubmit">
-              Login
+            <button class="login100-form-btn" :disabled="loading" @click="onSubmit">
+              {{ loading ? "Signing in..." : "Login" }}
             </button>
           </div>
 

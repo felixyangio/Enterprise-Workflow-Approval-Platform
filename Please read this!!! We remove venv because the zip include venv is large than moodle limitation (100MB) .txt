@@ -1,0 +1,1 @@
+We remove venv because the zip include venv is large than moodle limitation (100MB). The code which includes venv version is on github.

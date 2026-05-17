@@ -1,6 +1,5 @@
 <script setup name="myabsent"> 
 import {useRouter} from "vue-router"
-import {defineProps} from "vue"
 
 const router = useRouter() 
 const goBack = () => {
