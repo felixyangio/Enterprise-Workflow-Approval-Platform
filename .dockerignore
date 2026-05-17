@@ -1,0 +1,14 @@
+.git
+.gitignore
+.DS_Store
+node_modules
+dist
+oafront
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env.deploy
+.env.local
+oaback/staticfiles

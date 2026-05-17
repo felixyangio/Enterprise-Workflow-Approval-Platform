@@ -21,6 +21,7 @@ __pycache__/
 
 # Django
 oaback/*.log
+.env.deploy
 
 # IDE
 .vscode/

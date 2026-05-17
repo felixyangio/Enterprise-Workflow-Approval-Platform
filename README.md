@@ -95,6 +95,64 @@ pytest
 
 The test suite covers authentication, announcements, legacy leave APIs, and the new workflow API.
 
+## Production Deployment
+
+This repository includes a Docker Compose deployment that serves:
+
+- Vue production build through Nginx
+- Django API through Gunicorn
+- `/api/*` reverse proxy from Nginx to Django
+- `/media/*` and `/api/media/*` uploaded files
+- Django collected static files for admin assets
+
+Create a local deployment environment file:
+
+```bash
+cp .env.deploy.example .env.deploy
+```
+
+Edit `.env.deploy` before exposing the app publicly:
+
+```env
+DJANGO_DEBUG=False
+DJANGO_SECRET_KEY=change-this-to-a-long-random-production-secret
+DJANGO_ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+DJANGO_CORS_ALLOW_ALL_ORIGINS=False
+DJANGO_CORS_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+DJANGO_SECURE_SSL_REDIRECT=True
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+DJANGO_SECURE_HSTS_SECONDS=31536000
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+DJANGO_SECURE_HSTS_PRELOAD=True
+DJANGO_USE_X_FORWARDED_PROTO=True
+DJANGO_SEED_DEMO_DATA=True
+```
+
+Build and start the deployment:
+
+```bash
+docker compose up -d --build
+```
+
+Open the app at:
+
+```text
+http://localhost
+```
+
+Useful deployment commands:
+
+```bash
+docker compose logs -f
+docker compose ps
+docker compose down
+docker compose exec backend python manage.py createsuperuser
+```
+
+The frontend production API base is configured as `/api` in `.env.production`, so the same domain can serve both the UI and API.
+
 ## Notes
 
 - `oafront/` is a historical duplicate of the frontend. The root `src/` frontend is the active implementation.

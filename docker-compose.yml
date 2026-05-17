@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: deploy/backend/Dockerfile
+    env_file:
+      - .env.deploy
+    environment:
+      SQLITE_PATH: /app/data/db.sqlite3
+    volumes:
+      - oa_database:/app/data
+      - oa_media:/app/media
+      - oa_static:/app/staticfiles
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deploy/nginx/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - oa_media:/media:ro
+      - oa_static:/staticfiles:ro
+    restart: unless-stopped
+
+volumes:
+  oa_database:
+  oa_media:
+  oa_static:
